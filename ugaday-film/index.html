@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Угадай фильм</title>
+<meta name="description" content="Игра для компании на одном телефоне: угадай фильм по длительности и подсказкам-билетам. 159 фильмов, зарубежных и наших.">
+<meta property="og:title" content="Угадай фильм">
+<meta property="og:description" content="Угадай фильм по длительности и подсказкам. Играйте компанией на одном телефоне.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://shchaev93.github.io/games/ugaday-film/">
+<meta property="og:image" content="https://shchaev93.github.io/games/ugaday-film/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE  party game on one phone, bright but tidy
+   IDEA   cinema box office: clues are tickets you pay for, runtime and timer glow on a marquee
+   PICTURE the board: marquee with bulbs + ticket grid; the final screen is a shareable poster card
+   COLOUR  white ground, popcorn red, near-black marquee, gold bulbs; night = same in a dark theatre
+   TYPE    Oswald (marquee letters) + Golos Text
+   LAYOUT  red header with scores; marquee, 3x2 tickets, guess form; phone: 2x3, marquee sticky */
+:root{color-scheme:light;--bg:#ffffff;--ink:#1d1214;--muted:#6d5a5c;--red:#d7262e;--red2:#b81d25;--paper:#fff3ef;--line:#efd6d1;--mq:#1d1214;--mqink:#fff7f2;--gold:#ffc83d;--ok:#1f7a4a}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#160c0e;--ink:#f6ecec;--muted:#b9a5a7;--red:#e0353d;--red2:#a91c23;--paper:#26171a;--line:#3d2529;--mq:#0b0506;--ok:#5fd394}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#160c0e;--ink:#f6ecec;--muted:#b9a5a7;--red:#e0353d;--red2:#a91c23;--paper:#26171a;--line:#3d2529;--mq:#0b0506;--ok:#5fd394}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 'Golos Text',system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:Oswald,'Arial Narrow',sans-serif;font-weight:700;letter-spacing:-.01em;line-height:1.05;margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+[hidden]{display:none!important}
+.stripes{height:14px;background:repeating-linear-gradient(90deg,var(--red) 0 26px,#fff 26px 52px)}
+.top{background:var(--red);color:#fff}
+.bar{max-width:1100px;margin:0 auto;padding:12px max(4vw,16px);display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.bar h1{font-size:clamp(28px,4vw,38px);margin-right:auto}
+.board{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--red2);border-radius:10px;padding:6px 12px;display:flex;align-items:baseline;gap:10px;min-height:44px}
+.chip b{font:700 22px/1 Oswald,sans-serif;font-variant-numeric:tabular-nums}
+.chip.on{background:var(--gold);color:#1d1214}
+.chip.prog{background:transparent;border:2px solid rgba(255,255,255,.55)}
+.chip small{display:block;font-size:13px;opacity:.85}
+.hbtn{background:transparent;border:2px solid #fff;border-radius:10px;padding:8px 14px;min-height:44px;color:#fff}
+.wrap{max-width:1100px;margin:0 auto;padding:clamp(18px,3vw,32px) max(4vw,16px) 48px}
+.two{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,2.5vw,26px)}
+.panel h2{font-size:26px;margin-bottom:12px}
+.sec+.sec{margin-top:22px}
+.sec h3{font-size:20px;margin-bottom:8px}
+.prow{display:flex;gap:8px;margin-bottom:8px}
+.field{flex:1;font-size:16px;min-height:44px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);width:100%}
+.field:focus{border-color:var(--red)}
+.ghost{background:transparent;border:1.5px solid var(--line);border-radius:10px;min-height:44px;padding:8px 14px}
+.ghost:hover{border-color:var(--red)}
+.big{background:var(--red);color:#fff;border:0;border-radius:12px;min-height:52px;padding:10px 22px;font:700 20px/1 Oswald,sans-serif;letter-spacing:.01em}
+.big:hover{background:var(--red2)}
+.big.wide{width:100%;margin-top:18px;min-height:58px;font-size:24px}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.seg button{border:1.5px solid var(--line);background:var(--bg);border-radius:10px;min-height:52px;padding:8px 10px;text-align:left;line-height:1.25}
+.seg button small{display:block;color:var(--muted);font-size:13px}
+.seg button[aria-pressed=true]{border-color:var(--red);box-shadow:inset 0 0 0 1.5px var(--red);font-weight:600}
+.hint{color:var(--muted);font-size:15px;margin:8px 0 0}
+.warn{color:var(--red);font-weight:600;font-size:15px;margin:8px 0 0}
+details.more{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+details.inner{margin-top:6px}details.inner summary{cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--red);font-weight:600}
+details.more summary{cursor:pointer;font:600 17px/1.3 'Golos Text',sans-serif;min-height:44px;display:flex;align-items:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1.5px solid var(--line);background:var(--bg);border-radius:999px;min-height:40px;padding:6px 14px;font-size:15px}
+.chips button[aria-pressed=true]{background:var(--red);border-color:var(--red);color:#fff}
+.toggle{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.toggle input{width:22px;height:22px;accent-color:var(--red)}
+.rules p{margin:0 0 10px}
+.rules b{color:var(--red)}
+.small{font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
+.resume{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--mq);color:var(--mqink);border-radius:14px;padding:14px 18px;margin-bottom:18px}
+.flist{list-style:none;margin:10px 0 0;padding:0;max-height:420px;overflow:auto;border-top:1px solid var(--line)}
+.flist button,.flist label{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);padding:10px 4px;min-height:44px}
+.flist button:hover{color:var(--red)}
+.flist span{color:var(--muted);white-space:nowrap}
+.flist .used{text-decoration:line-through;opacity:.5}
+.flist label input{width:20px;height:20px;accent-color:var(--red);flex:none}
+.flist label b{font-weight:400;flex:1}
+.center{max-width:560px;margin:0 auto;text-align:center}
+.who{margin:0 0 6px;color:var(--muted)}
+.lead h2{font-size:clamp(34px,6vw,54px);margin:6px 0 14px}
+.marquee{position:sticky;top:0;z-index:3;background:var(--mq);color:var(--mqink);border-radius:16px;padding:18px 26px;display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:end;gap:12px 28px}
+.marquee::before{content:'';position:absolute;inset:7px;border:4px dotted var(--gold);border-radius:11px;pointer-events:none}
+.lab{display:block;font-size:14px;color:var(--muted)}
+.marquee .lab{color:#d9c6c0}
+.big1{font:700 clamp(30px,5vw,52px)/1 Oswald,sans-serif;white-space:nowrap}
+.dur{color:var(--gold)}
+.bankbox{text-align:right}
+.bank{font-variant-numeric:tabular-nums}
+.clock{grid-column:1/-1;display:flex;align-items:center;gap:14px}
+.clock b{font:700 clamp(26px,4vw,40px)/1 Oswald,sans-serif;font-variant-numeric:tabular-nums}
+.clock.low b{color:var(--gold)}
+.pause{background:transparent;color:var(--mqink);border:2px solid #6b5559;border-radius:10px;min-height:44px;padding:6px 12px}
+.tbar{flex:1;height:8px;border-radius:4px;background:#3b2a2d;overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--gold);transition:width .25s linear}
+.tickets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+.optbox{background:var(--bg);border:1.5px solid var(--red);border-radius:14px;padding:14px 18px;margin:0 0 18px}
+.optbox .lab{margin-bottom:10px}
+.opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.nw{white-space:nowrap}
+.opt{border:1.5px solid var(--line);background:var(--paper);border-radius:10px;min-height:48px;padding:8px 12px;text-align:left;line-height:1.25;font-size:15px}
+button.opt:hover{border-color:var(--red)}
+button.opt[disabled]{text-decoration:line-through;opacity:.45}
+.opt.right{border-color:var(--ok);color:var(--ok);font-weight:600}
+.tk{position:relative;display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:13px 18px 14px;min-height:150px;width:100%}
+.tk::before,.tk::after{content:'';position:absolute;top:50%;width:18px;height:18px;margin-top:-9px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line)}
+.tk::before{left:-10px;clip-path:inset(0 0 0 50%)}
+.tk::after{right:-10px;clip-path:inset(0 50% 0 0)}
+.tl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:7px;border-bottom:2px dashed var(--line)}
+.tn{font:500 18px/1.15 Oswald,sans-serif}
+.pr{font:700 16px/1 Oswald,sans-serif;color:var(--red);white-space:nowrap}
+.tv{font-size:16px;line-height:1.4}
+button.tk:not([disabled]):hover{border-color:var(--red)}
+button.tk:not([disabled]) .tv{font:700 20px/1 Oswald,sans-serif;color:var(--red);margin-top:auto}
+.tk.open{background:var(--bg);border-color:var(--red)}
+.tk.open .pr{color:var(--muted);text-decoration:line-through}
+.tk.open .tv{animation:tear .35s ease-out}
+.tk.late{opacity:.6}
+@keyframes tear{from{opacity:0;transform:translateY(-6px) rotate(-1deg)}to{opacity:1;transform:none}}
+.paused{background:var(--paper);border:1px dashed var(--line);border-radius:16px;padding:48px 20px;margin:18px 0;text-align:center}
+.paused h2{font-size:40px;margin-bottom:8px}
+.guess{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:16px clamp(16px,2.5vw,26px)}
+.grow{display:flex;gap:10px;margin-top:6px}
+.grow .field{font-size:17px}
+.msg{min-height:24px;margin:10px 0 6px;font-weight:600}
+.msg.bad{color:var(--red)}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.answer{background:var(--mq);color:var(--mqink);border-radius:16px;padding:clamp(22px,3vw,34px);position:relative}
+.answer::before{content:'';position:absolute;inset:7px;border:4px dotted var(--gold);border-radius:11px;pointer-events:none}
+.answer .lab{color:#d9c6c0}
+.answer h2{font-size:clamp(32px,5.5vw,52px);margin:6px 0;text-wrap:balance}
+.sub{margin:0 0 16px;color:#e9dcd7}
+.pts{font:700 clamp(44px,7vw,72px)/1 Oswald,sans-serif;color:var(--gold);margin:0}
+.pts span{font-size:22px;color:var(--mqink)}
+.stat{margin:8px 0 20px;color:#e9dcd7}
+.rowbtns{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.nextmode{display:flex;flex-wrap:wrap;align-items:center;gap:8px;color:#d9c6c0;font-size:15px}
+.nextmode button{background:transparent;color:var(--mqink);border:1.5px solid #6b5559;border-radius:999px;min-height:40px;padding:6px 14px}
+.nextmode button[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#1d1214}
+.final{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;align-items:start}
+.card img{width:100%;border-radius:16px;display:block;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:14px}
+td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.facts{list-style:none;padding:0;margin:14px 0 0}
+.facts li{padding:10px 0;border-bottom:1px solid var(--line)}
+.facts b{display:block;font:600 14px/1.3 'Golos Text',sans-serif;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--mq);color:var(--mqink);padding:12px 18px;border-radius:12px;z-index:9;max-width:90vw}
+@media (prefers-reduced-motion:reduce){.tk.open .tv{animation:none}.tbar i{transition:none}}
+@media (max-width:800px){.two,.final{grid-template-columns:minmax(0,1fr)}.final .card{max-width:420px}}
+@media (max-width:860px){.tickets{grid-template-columns:repeat(2,minmax(0,1fr))}.opts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.bar{gap:8px}.bar h1{width:100%}.chip{padding:6px 10px}.hbtn{margin-left:auto;padding:8px 10px}.marquee{padding:12px 18px 12px;border-radius:0 0 14px 14px;margin:0 calc(-1*max(4vw,16px));gap:6px 14px}.big1{font-size:28px}.clock b{font-size:24px}.marquee .lab{font-size:13px}.pause{min-height:40px;padding:4px 10px}.marquee::before{inset:5px;border-width:3px}.tickets{gap:10px}.tk{min-height:124px;padding:11px 14px 12px}.grow{flex-direction:column}table{font-size:15px}th,td{padding:7px 4px}.stack thead{display:none}.stack tr{display:grid;padding-block:8px;border-bottom:1px solid var(--line)}.stack td{display:flex;justify-content:space-between;gap:12px;border:0;padding:3px 0}.stack td::before{content:attr(data-l);color:var(--muted)}.stack td:first-child{display:block}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="stripes" aria-hidden="true"></div>
+  <div class="bar">
+    <h1>Угадай фильм</h1>
+    <div id="board" class="board"></div>
+    <button id="quit" class="hbtn" type="button" hidden>Завершить</button>
+  </div>
+</header>
+<main id="app" class="wrap"></main>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="films.js"></script>
+<script>
+{
+const FILMS = window.FILMS || [];
+const GAME_URL = 'https://shchaev93.github.io/games/ugaday-film/';
+const CLUES = [["country","Страна и жанр",5],["director","Режиссер",5],["place","Где происходит",10],["hint","Неочевидная деталь",10],["actors","В главных ролях",15],["icon","Узнаваемая деталь",20],["plot","Сюжет одной фразой",25],["alt","Варианты: 1 из 8",30]];
+const CATS = [["com","Комедии"],["dra","Драмы"],["act","Боевики и приключения"],["sci","Фантастика"],["fan","Фэнтези и сказки"],["thr","Триллеры и детективы"],["cri","Криминал"],["rom","Мелодрамы"],["ani","Мультфильмы"],["hor","Ужасы"]];
+const ORIG = [["foreign","Зарубежные"],["ru","Советские и российские"]];
+const WRONG = 10;
+const PER = [8, 15, 20];
+const TIMERS = [[0,"Без таймера"],[60,"1 мин"],[120,"2 мин"],[180,"3 мин"]];
+const app = document.getElementById('app'), board = document.getElementById('board'), quitBtn = document.getElementById('quit'), toastEl = document.getElementById('toast');
+let state = null, tick = null, endsAt = 0, quitArmed = 0, cardUrl = '', listQ = '';
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dur = m => { const h = Math.floor(m / 60), r = m % 60; return h ? (r ? `${h} ч ${r} мин` : `${h} ч`) : `${r} мин`; };
+const clock = s => { const c = Math.max(0, Math.ceil(s)); return `${Math.floor(c / 60)}:${String(c % 60).padStart(2, '0')}`; };
+const plural = (n, a, b, c) => { const m = n % 10, h = n % 100; return m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 10 || h >= 20) ? b : c; };
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+const played = () => store.get('ugaday2-played') || [];
+const markPlayed = t => { const p = played(); if (!p.includes(t)) { p.push(t); store.set('ugaday2-played', p); } };
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function defaults() {
+  const s = store.get('ugaday2-settings') || {};
+  return {players: (s.names || ['Игрок 1', 'Игрок 2']).map(name => ({name})), per: s.per || 8, mode: s.mode || 'random', timer: s.v3 ? s.timer : 60,
+    cats: s.cats || CATS.map(c => c[0]), orig: s.orig || ORIG.map(o => o[0]), custom: s.custom || [], view: 'setup'};
+}
+function saveSettings() {
+  store.set('ugaday2-settings', {v3: true, names: state.players.map(p => p.name), per: state.per, mode: state.mode, timer: state.timer, cats: state.cats, orig: state.orig, custom: state.custom});
+}
+const poolOf = s => s.custom.length ? s.custom.slice() : FILMS.map((f, i) => i).filter(i => s.cats.includes(FILMS[i].cat) && s.orig.includes(FILMS[i].origin));
+const gi = () => state.round % state.players.length;
+const pi = () => (state.round + 1) % state.players.length;
+const film = () => FILMS[state.film];
+const bank = () => Math.max(0, 100 - CLUES.filter(c => state.opened.includes(c[0])).reduce((s, c) => s + c[2], 0) - WRONG * state.wrong);
+const valueOf = (f, k) => k === 'country' ? `${f.country}; ${f.genre.toLowerCase()}` : f[k];
+
+const norm = s => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-я]+/g, ' ').trim().replace(/^the /, '');
+function lev(a, b) {
+  const d = Array.from({length: b.length + 1}, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) { let prev = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; } }
+  return d[b.length];
+}
+function matches(guess, f) {
+  const g = norm(guess); if (!g) return false;
+  const al = [f.ru, f.en, f.ru.split(':')[0], f.en.split(':')[0], f.ru.split(', или')[0], ...f.aliases].filter(Boolean).map(norm);
+  return al.some(a => a === g || lev(g, a) <= (a.length <= 4 ? 0 : a.length <= 9 ? 1 : 2));
+}
+
+function toast(t) { toastEl.textContent = t; toastEl.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { toastEl.hidden = true; }, 2600); }
+
+function renderHead() {
+  const live = !['setup', 'final'].includes(state.view);
+  board.innerHTML = live || state.view === 'final' ? state.players.map((p, i) => {
+    const on = live && state.view !== 'result' && i === gi();
+    return `<div class="chip${on ? ' on' : ''}"><span>${esc(p.name)}${on ? '<small>угадывает</small>' : ''}</span><b>${p.score}</b></div>`;
+  }).join('') : '';
+  if (live) board.insertAdjacentHTML('afterbegin', `<div class="chip prog"><span>Фильм</span><b>${state.round + 1} из ${state.total}</b></div>`);
+  quitBtn.hidden = !live;
+}
+
+function ticket(c, done) {
+  const [k, label, cost] = c, open = state.opened.includes(k), show = open || done;
+  if (k === 'alt' && show) return `<button type="button" class="tk${open ? ' open' : ' late'}" disabled><span class="tl"><span class="tn">${label}</span><span class="pr">-${cost}</span></span><span class="tv">${open ? 'Выберите ниже' : 'Ниже'}</span></button>`;
+  return `<button type="button" class="tk${open ? ' open' : ''}${done && !open ? ' late' : ''}" data-act="open" data-k="${k}" ${show ? 'disabled' : ''} aria-label="${label}, ${cost} очков">
+    <span class="tl"><span class="tn">${label}</span><span class="pr">-${cost}</span></span>
+    <span class="tv">${show ? esc(valueOf(film(), k)) : 'Открыть'}</span></button>`;
+}
+const optsPanel = done => { const f = film(); if (!done && !state.opened.includes('alt')) return '';
+  return `<div class="optbox"><span class="lab">${done ? 'Варианты ответа' : 'Один из этих фильмов. Неверный выбор - минус ' + WRONG}</span><div class="opts">${state.opts.map((o, j) => { const right = o === f.ru, bad = state.optBad.includes(j);
+    return done ? `<span class="opt${right ? ' right' : ''}">${esc(o)}</span>` : `<button type="button" class="opt" data-act="opt" data-i="${j}" ${bad ? 'disabled' : ''}>${esc(o)}</button>`; }).join('')}</div></div>`; };
+const tickets = done => `<div class="tickets">${CLUES.map(c => ticket(c, done)).join('')}</div>${optsPanel(done)}`;
+
+function filmList(q, kind) {
+  const n = norm(q), pool = kind === 'custom' ? FILMS.map((f, i) => i) : state.pool;
+  const rows = pool.filter(i => { const f = FILMS[i]; return !n || norm(f.ru).includes(n) || norm(f.en).includes(n); })
+    .sort((a, b) => FILMS[a].ru.localeCompare(FILMS[b].ru, 'ru'));
+  if (!rows.length) return '<li class="hint">Ничего не нашлось</li>';
+  return rows.map(i => { const f = FILMS[i], used = state.used && state.used.includes(i);
+    if (kind === 'custom') return `<li><label><input type="checkbox" data-act="cust" data-i="${i}" ${state.custom.includes(i) ? 'checked' : ''}><b>${esc(f.ru)}</b></label></li>`;
+    return `<li><button type="button" data-act="pick" data-i="${i}" ${used ? 'disabled class="used"' : ''}>${esc(f.ru)}<span>${!used && played().includes(f.ru) ? 'было раньше' : ''}</span></button></li>`;
+  }).join('');
+}
+
+function setupInfo() {
+  const pool = poolOf(state), n = state.players.length, need = n * state.per;
+  const per = Math.min(state.per, Math.floor(pool.length / n));
+  const mins = Math.max(5, Math.round(n * per * 1.25 / 5) * 5);
+  return {pool, per, mins, short: pool.length < need};
+}
+
+const views = {
+  setup: () => {
+    const info = setupInfo(), saved = store.get('ugaday2-game');
+    const canResume = saved && saved.players && !['setup', 'final'].includes(saved.view);
+    return `${canResume ? `<div class="resume"><span>Есть незаконченная игра: фильм ${saved.round + 1} из ${saved.total}</span><button type="button" class="big" data-act="resume">Продолжить</button></div>` : ''}
+    <section class="two">
+    <div class="panel">
+      <div class="sec"><h3>Кто играет</h3>
+      ${state.players.map((p, i) => `<div class="prow"><input class="field pname" id="pn${i}" data-i="${i}" value="${esc(p.name)}" maxlength="14" aria-label="Имя игрока ${i + 1}">${state.players.length > 1 ? `<button type="button" class="ghost" data-act="rm" data-i="${i}" aria-label="Убрать игрока ${i + 1}">Убрать</button>` : ''}</div>`).join('')}
+      ${state.players.length < 6 ? '<button type="button" class="ghost" data-act="add">Добавить игрока</button>' : ''}</div>
+      <div class="sec"><h3>Сколько фильмов на каждого</h3>
+      <div class="seg">${PER.map(p => `<button type="button" data-act="per" data-v="${p}" aria-pressed="${state.per === p}">${p} фильмов</button>`).join('')}</div>
+      <p class="hint">Примерно ${info.mins} минут на ${state.players.length === 1 ? 'одного' : state.players.length + ' ' + plural(state.players.length, 'игрока', 'игроков', 'игроков')}.</p>
+      ${info.short ? `<p class="warn">В выбранной колоде ${info.pool.length} ${plural(info.pool.length, 'фильм', 'фильма', 'фильмов')}, хватит по ${info.per} на каждого.</p>` : ''}</div>
+      <div class="sec"><h3>Кто выбирает фильм</h3>
+      <div class="seg"><button type="button" data-act="mode" data-v="random" aria-pressed="${state.mode === 'random'}">Игра, случайно<small>Проще всего, можно играть одному</small></button><button type="button" data-act="mode" data-v="player" aria-pressed="${state.mode === 'player'}" ${state.players.length < 2 ? 'disabled' : ''}>Игроки по очереди<small>Загадываете друг другу</small></button></div></div>
+      <details class="more"${state.moreOpen ? ' open' : ''} data-act="more"><summary>Дополнительно</summary>
+        <div class="sec"><h3>Время на ответ</h3><div class="seg">${TIMERS.map(([v, l]) => `<button type="button" data-act="timer" data-v="${v}" aria-pressed="${state.timer === v}">${l}</button>`).join('')}</div></div>
+        <div class="sec"><h3>Какие фильмы</h3><div class="chips">${ORIG.map(([k, l]) => `<button type="button" data-act="orig" data-v="${k}" aria-pressed="${state.orig.includes(k)}">${l}</button>`).join('')}</div>
+        <div class="chips" style="margin-top:8px">${CATS.map(([k, l]) => `<button type="button" data-act="cat" data-v="${k}" aria-pressed="${state.cats.includes(k)}">${l}</button>`).join('')}</div>
+        <p class="hint">${state.custom.length ? 'Сейчас играете своим набором, жанры не учитываются.' : `В колоде: ${info.pool.length} ${plural(info.pool.length, 'фильм', 'фильма', 'фильмов')}.`}</p></div>
+        <div class="sec"><h3>Свой набор фильмов</h3>
+        <p class="hint" style="margin-top:0">Выбрано: <b id="custn">${state.custom.length}</b>${state.custom.length ? ' <button type="button" class="ghost" data-act="custclear" style="min-height:36px;padding:4px 10px;margin-left:6px">Сбросить</button>' : ''}</p>
+        <details class="inner"><summary>Открыть список фильмов</summary><p class="warn">Список - сильная подсказка. Пусть его откроет тот, кто не будет угадывать.</p>
+        <input id="cq" class="field" type="search" placeholder="Поиск по названию" autocomplete="off" style="margin-top:8px">
+        <ul id="clist" class="flist" style="max-height:300px">${filmList('', 'custom')}</ul></details></div>
+      </details>
+      <button type="button" class="big wide" data-act="start" ${info.per < 1 ? 'disabled' : ''}>Играть</button>
+    </div>
+    <div class="panel rules">
+      <h2>Как играть на одном телефоне</h2>
+      <p>Телефон у того, кто угадывает. Остальные молчат и не подсказывают.</p>
+      <p>Сразу видны <b>длительность фильма и год премьеры</b>. Остальное спрятано под восемью подсказками.</p>
+      <p>За фильм можно получить до <b>100 очков</b>. Каждая открытая подсказка стоит от 5 до 30 очков, каждый неверный ответ <b>-${WRONG}</b>. Дешевые подсказки размытые, дорогие точные.</p>
+      <p>Угадал - получаешь 100 минус открытые подсказки и промахи. Например, открыл подсказки за 10 и 15 и один раз ошибся: <span class="nw">100 - 10 - 15 - 10 = <b>65 очков</b></span>.</p>
+      <p>${state.timer ? `На ответ <b>${state.timer / 60} мин</b>, таймер можно поставить на паузу. ` : ''}Сдался${state.timer ? ' или время вышло' : ''} - <b>0 очков</b> за этот фильм.</p>
+      <p>Игра заканчивается, когда каждому загадали по ${state.per} ${plural(state.per, 'фильму', 'фильма', 'фильмов')}. В конце - итоговая карточка.</p>
+      <p>Фильмы из прошлых игр на этом телефоне не повторяются, пока не закончатся остальные.${played().length ? ` Уже сыграно: ${played().length}. <button type="button" class="ghost" data-act="playedclear" style="min-height:36px;padding:4px 10px">Сбросить</button>` : ''}</p>
+    </div></section>`;
+  },
+  pick: () => `<section class="two">
+    <div class="panel lead">
+      <p class="who">Фильм ${state.round + 1} из ${state.total}. Загадывает <b>${esc(state.players[pi()].name)}</b></p>
+      <h2>${esc(state.players[gi()].name)}, отвернись</h2>
+      <button type="button" class="big" data-act="rnd">Случайный фильм</button>
+      <p class="hint">Или выберите фильм в колоде. Сыгранные зачеркнуты.</p>
+    </div>
+    <div class="panel">
+      <label class="lab" for="q">Поиск по колоде</label>
+      <input id="q" class="field" type="search" placeholder="Поиск по названию" autocomplete="off">
+      <ul id="flist" class="flist">${filmList('', 'pick')}</ul>
+    </div></section>`,
+  ready: () => `<section class="center panel lead">
+      <p class="who">Фильм ${state.round + 1} из ${state.total}</p>
+      <h2>${esc(state.players[gi()].name)}, твой ход</h2>
+      ${state.players.length > 1 ? `<p>Передайте телефон игроку: <b>${esc(state.players[gi()].name)}</b></p>` : ''}
+      <p>${state.timer ? `Таймер на ${state.timer / 60} ${plural(state.timer / 60, 'минуту', 'минуты', 'минут')} запустится, когда нажмешь кнопку.` : 'Время на ответ не ограничено.'}</p>
+      <button type="button" class="big wide" data-act="go">Начать ход</button>
+    </section>`,
+  play: () => {
+    const f = film(), left = state.left ?? state.timer, pct = state.timer ? Math.max(0, left / state.timer * 100) : 0;
+    const head = `<div class="marquee">
+      <div><span class="lab">Длительность</span><b class="big1 dur">${dur(f.min)}</b></div>
+      <div><span class="lab">Премьера</span><b class="big1">${f.year}</b></div>
+      <div class="bankbox"><span class="lab">Можно получить</span><b class="big1 bank">${bank()}</b></div>
+      ${state.timer ? `<div class="clock${left <= 20 ? ' low' : ''}"><b id="clk">${clock(left)}</b><span class="tbar"><i id="tbar" style="width:${pct}%"></i></span><button type="button" class="pause" data-act="pause">${state.paused ? 'Дальше' : 'Пауза'}</button></div>` : ''}</div>`;
+    if (state.paused) return `<section>${head}<div class="paused"><h2>Пауза</h2><p>Подсказки скрыты, пока таймер стоит.</p><button type="button" class="big" data-act="pause">Продолжить</button></div></section>`;
+    return `<section>${head}${tickets(false)}
+    <form id="gf" class="guess" autocomplete="off">
+      <label class="lab" for="g">${esc(state.players[gi()].name)}, какой это фильм?</label>
+      <div class="grow"><input id="g" class="field" placeholder="Название по-русски или в оригинале" value="${esc(state.draft || '')}"><button type="submit" class="big">Проверить</button></div>
+      <p class="msg${state.bad ? ' bad' : ''}" aria-live="polite">${esc(state.msg || '')}</p>
+      <div class="acts">${state.mode === 'player' ? '<button type="button" class="ghost" data-act="manual">Засчитать вручную</button>' : ''}<button type="button" class="ghost" data-act="give">Сдаюсь</button></div>
+    </form>
+    </section>`;
+  },
+  result: () => {
+    const f = film(), L = state.last, last = state.round + 1 >= state.total;
+    const why = L.win ? `${esc(state.players[gi()].name)} угадывает` : L.timeout ? 'Время вышло. Это был фильм' : 'Это был фильм';
+    return `<section>
+    <div class="answer">
+      <span class="lab">${why}</span>
+      <h2>${esc(f.ru)}</h2>
+      <p class="sub">${f.en ? esc(f.en) + ', ' : ''}${f.year}, ${esc(f.director)}</p>
+      <p class="pts">${L.win ? '+' + L.pts : '0'} <span>${plural(L.pts, 'очко', 'очка', 'очков')}</span></p>
+      <p class="stat">Открыто подсказок: ${state.opened.length} из ${CLUES.length}. Промахов: ${state.wrong}.</p>
+      <div class="rowbtns"><button type="button" class="big" data-act="next">${last ? 'Итоги игры' : 'Следующий фильм'}</button>
+      ${last ? '' : `<span class="nexthint">Осталось ${state.total - state.round - 1} ${plural(state.total - state.round - 1, 'фильм', 'фильма', 'фильмов')}. Дальше угадывает ${esc(state.players[(state.round + 1) % state.players.length].name)}</span>`}</div>
+      ${last || state.players.length < 2 ? '' : `<div class="nextmode" style="margin-top:16px">Фильм выбирает: <button type="button" data-act="mode2" data-v="random" aria-pressed="${state.mode === 'random'}">игра</button><button type="button" data-act="mode2" data-v="player" aria-pressed="${state.mode === 'player'}">игрок</button></div>`}
+    </div>
+    ${tickets(true)}</section>`;
+  },
+  final: () => {
+    const st = stats();
+    return `<section class="final">
+      <div class="card"><img id="cardimg" alt="Итоговая карточка игры" width="1080" height="1350" style="height:auto;background:var(--red)" ${cardUrl ? `src="${cardUrl}"` : ''}></div>
+      <div>
+        <h2 style="font-size:clamp(32px,5vw,48px)">${esc(st.headline)}</h2>
+        <div class="scroll" style="margin-top:14px"><table class="stack"><thead><tr><th>Игрок</th><th>Очки</th><th>Угадано</th><th>Промахи</th><th>Любимая подсказка</th></tr></thead><tbody>
+        ${st.rows.map(r => `<tr><td data-l=""><span><b>${esc(r.name)}</b><br><small style="color:var(--muted)">${esc(r.title)}</small></span></td><td class="n" data-l="Очки">${r.score} из ${r.possible}</td><td class="n" data-l="Угадано">${r.guessed} из ${r.rounds}</td><td class="n" data-l="Промахи">${r.misses}</td><td data-l="Любимая подсказка">${esc(r.fav)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <ul class="facts">${st.facts.map(([a, b]) => `<li><b>${esc(a)}</b>${esc(b)}</li>`).join('')}</ul>
+        <div class="acts" style="margin-top:18px"><button type="button" class="big" data-act="share">Поделиться карточкой</button><button type="button" class="ghost" data-act="copy">Скопировать итоги</button><button type="button" class="ghost" data-act="again">Сыграть еще</button><button type="button" class="ghost" data-act="menu">Новые настройки</button></div>
+      </div></section>`;
+  }
+};
+
+function stats() {
+  const label = Object.fromEntries(CLUES.map(c => [c[0], c[1]]));
+  const rows = state.players.map((p, i) => {
+    const mine = state.log.filter(r => r.p === i), wins = mine.filter(r => r.win);
+    const cnt = {}; mine.forEach(r => r.opened.forEach(k => { cnt[k] = (cnt[k] || 0) + 1; }));
+    const favK = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+    const misses = mine.reduce((s, r) => s + r.wrong, 0), avgOpen = mine.length ? mine.reduce((s, r) => s + r.opened.length, 0) / mine.length : 0;
+    const best = wins.slice().sort((a, b) => b.pts - a.pts)[0];
+    const top1 = wins.reduce((m, r) => Math.max(m, r.pts), 0), zero = wins.some(r => r.opened.length === 0);
+    return {name: p.name, score: p.score, possible: mine.length * 100, guessed: wins.length, rounds: mine.length, misses, avgOpen, top1, zero, fav: favK ? label[favK] : 'не открывал', title: '', best};
+  });
+  const pickT = (name, key, dir, ok) => { const free = rows.filter(r => !r.title && r.rounds && (!ok || ok(r))); if (!free.length) return;
+    const best = free.reduce((m, r) => (dir * (r[key] - m[key]) > 0 ? r : m), free[0]);
+    if (rows.length === 1 || rows.filter(r => r[key] === best[key]).length === 1) best.title = name; };
+  rows.filter(r => r.zero).forEach(r => { r.title = 'Узнает с полуслова'; });
+  pickT('Снайпер: меньше всех промахов', 'misses', -1);
+  pickT('Самый точный ответ за ход', 'top1', 1, r => r.top1 > 0);
+  pickT('Бережет очки: меньше всех подсказок', 'avgOpen', -1);
+  pickT('Коллекционер билетов', 'avgOpen', 1);
+  pickT('Смелый стрелок: больше всех версий', 'misses', 1, r => r.misses > 0);
+  rows.forEach(r => { if (!r.title) r.title = r.guessed === r.rounds && r.rounds ? 'Ни одного провала' : 'Зритель со стажем'; });
+  const top = Math.max(...rows.map(r => r.score)), winners = rows.filter(r => r.score === top);
+  const headline = rows.length === 1 ? `${rows[0].score} из ${rows[0].possible}` : winners.length > 1 ? `Ничья: ${winners.map(w => w.name).join(' и ')}` : `Победа: ${winners[0].name}`;
+  const facts = [];
+  const wins = state.log.filter(r => r.win);
+  if (wins.length) { const r = wins.slice().sort((a, b) => b.pts - a.pts)[0]; facts.push(['Узнали быстрее всего', `${FILMS[r.film].ru}: ${state.players[r.p].name}, +${r.pts}`]); }
+  const fails = state.log.filter(r => !r.win);
+  const hard = fails[0] || wins.slice().sort((a, b) => a.pts - b.pts)[0];
+  if (hard && state.log.length > 1) facts.push(['Самый крепкий орешек', `${FILMS[hard.film].ru}${hard.win ? `: всего +${hard.pts}` : ': не угадали'}`]);
+  const all = {}; state.log.forEach(r => r.opened.forEach(k => { all[k] = (all[k] || 0) + 1; }));
+  const popK = Object.keys(all).sort((a, b) => all[b] - all[a])[0];
+  if (popK) facts.push(['Чаще всего покупали', `${label[popK]}: ${all[popK]} ${plural(all[popK], 'раз', 'раза', 'раз')}`]);
+  facts.push(['Всего', `угадано ${wins.length} из ${state.log.length} фильмов`]);
+  return {rows, winners, headline, facts};
+}
+
+function drawCard() {
+  const st = stats(), W = 1080, H = 1350, cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  if (!x.roundRect) x.roundRect = function (a, b, c, d) { this.rect(a, b, c, d); };
+  const D = 'Oswald, "Arial Narrow", sans-serif', T = '"Golos Text", system-ui, sans-serif';
+  const fit = (t, max, font) => { x.font = font; let s = String(t); while (x.measureText(s).width > max && s.length > 1) s = s.slice(0, -1); return s === String(t) ? s : s.slice(0, -1) + '…'; };
+  x.fillStyle = '#d7262e'; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < W; i += 52) { x.fillStyle = '#ffffff'; x.fillRect(i + 26, 0, 26, 24); }
+  x.fillStyle = '#ffffff'; x.font = `700 92px ${D}`; x.fillText('Угадай фильм', 64, 150);
+  x.font = `400 34px ${T}`; x.fillStyle = '#ffe7e2';
+  x.fillText(`Итоги игры, ${new Date().toLocaleDateString('ru-RU', {day: 'numeric', month: 'long'})}`, 66, 205);
+  const px = 48, py = 250, pw = W - 96, ph = H - 250 - 140;
+  x.fillStyle = '#1d1214'; x.beginPath(); x.roundRect(px, py, pw, ph, 28); x.fill();
+  x.strokeStyle = '#ffc83d'; x.lineWidth = 7; x.setLineDash([2, 16]); x.lineCap = 'round'; x.beginPath(); x.roundRect(px + 14, py + 14, pw - 28, ph - 28, 18); x.stroke(); x.setLineDash([]);
+  let y = py + 110;
+  x.fillStyle = '#ffc83d'; x.font = `700 70px ${D}`; x.fillText(fit(st.headline, pw - 120, `700 70px ${D}`), px + 60, y);
+  y += 40;
+  const many = st.rows.length > 4, rowH = many ? 112 : st.rows.length > 2 ? 150 : 170;
+  st.rows.forEach(r => {
+    y += rowH;
+    const base = many ? y : y - 34;
+    x.fillStyle = '#fff7f2'; x.font = `600 42px ${T}`; x.fillText(fit(r.name, 520, `600 42px ${T}`), px + 60, base - 44);
+    x.fillStyle = '#ffc83d'; x.font = `600 28px ${T}`; x.fillText(fit(r.title, pw - 140, `600 28px ${T}`), px + 60, base);
+    if (!many) { x.fillStyle = '#d9c6c0'; x.font = `400 28px ${T}`; x.fillText(`Угадано ${r.guessed} из ${r.rounds}, ${plural(r.misses, 'промах', 'промаха', 'промахов').replace(/^/, r.misses + ' ')}`, px + 60, y); }
+    x.textAlign = 'right'; x.fillStyle = '#d9c6c0'; x.font = `500 30px ${D}`; const ofT = `из ${r.possible}`; x.fillText(ofT, px + pw - 60, (many ? y : y - 34) - 44);
+    const ofW = x.measureText(ofT).width; x.fillStyle = '#ffc83d'; x.font = `700 58px ${D}`; x.fillText(String(r.score), px + pw - 60 - ofW - 14, (many ? y : y - 34) - 44); x.textAlign = 'left';
+    x.strokeStyle = '#3b2a2d'; x.lineWidth = 2; x.beginPath(); x.moveTo(px + 60, y + 26); x.lineTo(px + pw - 60, y + 26); x.stroke();
+  });
+  y += 40;
+  const room = py + ph - 50;
+  st.facts.slice(0, 4).forEach(([a, b]) => {
+    if (y + 100 > room) return;
+    y += 58; x.fillStyle = '#d9c6c0'; x.font = `400 26px ${T}`; x.fillText(a, px + 60, y);
+    y += 42; x.fillStyle = '#fff7f2'; x.font = `600 34px ${T}`; x.fillText(fit(b, pw - 120, `600 34px ${T}`), px + 60, y);
+  });
+  x.fillStyle = '#ffffff'; x.font = `600 34px ${T}`; x.fillText('Сыграйте тоже:', 66, H - 80);
+  x.font = `400 32px ${T}`; x.fillText(GAME_URL.replace('https://', ''), 66, H - 36);
+  return cv;
+}
+async function renderCard() {
+  try { await document.fonts.load('700 70px Oswald'); await document.fonts.load('600 42px "Golos Text"'); await document.fonts.load('400 29px "Golos Text"'); } catch (e) {}
+  const cv = drawCard(); cardUrl = cv.toDataURL('image/png');
+  const img = document.getElementById('cardimg'); if (img) img.src = cardUrl;
+  return cv;
+}
+function shareText() {
+  const st = stats();
+  return `Угадай фильм: ${st.headline}\n${st.rows.map(r => `${r.name}: ${r.score} из ${r.possible}, угадано ${r.guessed} из ${r.rounds}`).join('\n')}\nСыграйте тоже: ${GAME_URL}`;
+}
+async function shareCard() {
+  const cv = await renderCard();
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const file = blob && new File([blob], 'ugaday-film-itogi.png', {type: 'image/png'});
+  try {
+    if (file && navigator.canShare && navigator.canShare({files: [file]})) { await navigator.share({files: [file], title: 'Угадай фильм', text: shareText()}); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  if (window.claude) { toast('В превью Claude сохранение не работает: сделайте скриншот карточки'); return; }
+  try { const a = document.createElement('a'); a.href = cardUrl; a.download = 'ugaday-film-itogi.png'; document.body.appendChild(a); a.click(); a.remove(); toast('Картинка сохранена'); }
+  catch (e) { toast('Не получилось сохранить: сделайте скриншот карточки'); }
+}
+
+function save() { if (state.view !== 'setup') store.set('ugaday2-game', Object.assign({}, state, {paused: state.view === 'play' ? true : state.paused})); }
+function render(focus) {
+  renderHead();
+  app.innerHTML = views[state.view]();
+  const el = focus && document.getElementById(focus);
+  if (el) { el.focus(); if (el.setSelectionRange && el.value) el.setSelectionRange(el.value.length, el.value.length); }
+  save();
+  if (state.view === 'final') renderCard();
+}
+function stopTimer() { clearInterval(tick); tick = null; }
+function runTimer() {
+  stopTimer();
+  if (!state.timer || state.paused || state.view !== 'play') return;
+  endsAt = Date.now() + state.left * 1000;
+  tick = setInterval(() => {
+    state.left = Math.max(0, (endsAt - Date.now()) / 1000);
+    const c = document.getElementById('clk'), b = document.getElementById('tbar');
+    if (c) { c.textContent = clock(state.left); c.parentElement.classList.toggle('low', state.left <= 20); }
+    if (b) b.style.width = (state.left / state.timer * 100) + '%';
+    if (state.left <= 0) { stopTimer(); finish(false, true); }
+  }, 250);
+}
+
+function begin() {
+  saveSettings();
+  const info = setupInfo();
+  if (info.per < 1) { toast('Слишком мало фильмов для такого числа игроков'); return; }
+  cardUrl = '';
+  const was = played(), fresh = info.pool.filter(i => !was.includes(FILMS[i].ru)), old = info.pool.filter(i => was.includes(FILMS[i].ru));
+  Object.assign(state, {players: state.players.map((p, i) => ({name: p.name.trim() || 'Игрок ' + (i + 1), score: 0})), pool: info.pool, order: shuffle(fresh).concat(shuffle(old)),
+    total: state.players.length * info.per, round: 0, used: [], log: [], film: -1});
+  if (state.players.length < 2) state.mode = 'random';
+  turn();
+}
+function turn() {
+  stopTimer();
+  if (state.mode === 'player' && state.players.length > 1) { state.view = 'pick'; }
+  else { state.film = state.order.find(i => !state.used.includes(i)); prepare(); state.view = 'ready'; }
+  render(); window.scrollTo(0, 0);
+}
+function prepare() { const f = FILMS[state.film]; markPlayed(f.ru); Object.assign(state, {opts: shuffle([f.ru, ...f.alt]), optBad: [], opened: [], wrong: 0, msg: '', bad: false, draft: '', left: state.timer, paused: false}); if (!state.used.includes(state.film)) state.used.push(state.film); }
+function finish(win, timeout) {
+  stopTimer();
+  const pts = win ? bank() : 0;
+  state.players[gi()].score += pts;
+  state.log.push({p: gi(), film: state.film, pts, win, timeout: !!timeout, wrong: state.wrong, opened: state.opened.slice()});
+  state.last = {win, pts, timeout: !!timeout};
+  state.view = 'result';
+  render(); window.scrollTo(0, 0);
+}
+
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t || t.disabled) return;
+  const a = t.dataset.act, i = +t.dataset.i, v = t.dataset.v;
+  if (['more', 'cust'].includes(a)) return;
+  if (a === 'add') { state.players.push({name: 'Игрок ' + (state.players.length + 1)}); render('pn' + (state.players.length - 1)); }
+  else if (a === 'rm') { state.players.splice(i, 1); if (state.players.length < 2) state.mode = 'random'; render(); }
+  else if (a === 'per') { state.per = +v; render(); }
+  else if (a === 'mode') { state.mode = v; render(); }
+  else if (a === 'timer') { state.timer = +v; render(); }
+  else if (a === 'orig' || a === 'cat') { const key = a === 'orig' ? 'orig' : 'cats', arr = state[key]; state[key] = arr.includes(v) ? arr.filter(x => x !== v) : arr.concat(v); render(); }
+  else if (a === 'custclear') { state.custom = []; render(); }
+  else if (a === 'playedclear') { store.set('ugaday2-played', []); toast('История очищена'); render(); }
+  else if (a === 'start') begin();
+  else if (a === 'resume') { const s = store.get('ugaday2-game'); if (s) { state = s; state.paused = state.view === 'play'; render(); } }
+  else if (a === 'rnd') { state.film = state.order.find(x => !state.used.includes(x)); prepare(); state.view = 'ready'; render(); }
+  else if (a === 'pick') { state.film = i; prepare(); state.view = 'ready'; render(); }
+  else if (a === 'go') { state.view = 'play'; state.left = state.timer; state.paused = false; render(); runTimer(); }
+  else if (a === 'pause') { state.paused = !state.paused; if (state.paused) stopTimer(); render(); if (!state.paused) runTimer(); }
+  else if (a === 'open') { state.opened.push(t.dataset.k); state.msg = ''; state.draft = (document.getElementById('g') || {}).value || ''; render(); }
+  else if (a === 'opt') { if (state.opts[i] === film().ru) finish(true); else { state.optBad.push(i); state.wrong++; state.msg = `Мимо: "${state.opts[i]}". Минус ${WRONG} очков.`; state.bad = true; render(); } }
+  else if (a === 'manual') finish(true);
+  else if (a === 'give') finish(false);
+  else if (a === 'mode2') { state.mode = v; render(); }
+  else if (a === 'next') { if (state.round + 1 >= state.total) { state.view = 'final'; render(); window.scrollTo(0, 0); } else { state.round++; turn(); } }
+  else if (a === 'share') shareCard();
+  else if (a === 'copy') { navigator.clipboard?.writeText(shareText()).then(() => toast('Итоги скопированы'), () => toast('Не получилось скопировать')); }
+  else if (a === 'again') begin();
+  else if (a === 'menu') { const d = defaults(); state = d; store.set('ugaday2-game', null); render(); }
+});
+app.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.act === 'cust') { const i = +t.dataset.i; state.custom = t.checked ? state.custom.concat(i) : state.custom.filter(x => x !== i); const n = document.getElementById('custn'); if (n) n.textContent = state.custom.length; saveSettings(); }
+});
+app.addEventListener('toggle', e => { if (e.target.matches('details.more')) state.moreOpen = e.target.open; }, true);
+app.addEventListener('input', e => {
+  const t = e.target;
+  if (t.classList.contains('pname')) { state.players[+t.dataset.i].name = t.value; }
+  else if (t.id === 'q') document.getElementById('flist').innerHTML = filmList(t.value, 'pick');
+  else if (t.id === 'cq') { listQ = t.value; document.getElementById('clist').innerHTML = filmList(t.value, 'custom'); }
+  else if (t.id === 'g') state.draft = t.value;
+});
+app.addEventListener('submit', e => {
+  if (e.target.id !== 'gf') return;
+  e.preventDefault();
+  const g = document.getElementById('g').value;
+  if (!g.trim()) return;
+  if (matches(g, film())) return finish(true);
+  state.wrong++; state.draft = '';
+  state.msg = `Мимо: "${g.trim()}". Минус ${WRONG} очков.`; state.bad = true;
+  render('g');
+});
+quitBtn.addEventListener('click', () => {
+  if (Date.now() - quitArmed < 3000) {
+    stopTimer(); quitBtn.textContent = 'Завершить';
+    if (state.log.length) { state.total = state.log.length; state.view = 'final'; } else { state = defaults(); store.set('ugaday2-game', null); }
+    render(); window.scrollTo(0, 0);
+  } else { quitArmed = Date.now(); quitBtn.textContent = 'Точно завершить?'; setTimeout(() => { quitBtn.textContent = 'Завершить'; }, 3000); }
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && state && state.view === 'play' && state.timer && !state.paused) { state.paused = true; stopTimer(); render(); } });
+
+window.claude?.hot?.snapshot(() => state);
+const start = data => { state = data && data.players && data.view ? data : defaults(); if (state.view === 'play') state.paused = true; render(); };
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+window.__test = {get state() { return state; }, matches, stats};
+}
+</script>
+</body>
+</html>
