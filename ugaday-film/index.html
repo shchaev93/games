@@ -14,6 +14,19 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=114263591', 'ym');
+
+    ym(114263591, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/114263591" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
@@ -183,6 +196,8 @@ const CLUES = [["country","Страна и жанр",5],["director","Режис�
 const CATS = [["com","Комедии"],["dra","Драмы"],["act","Боевики и приключения"],["sci","Фантастика"],["fan","Фэнтези и сказки"],["thr","Триллеры и детективы"],["cri","Криминал"],["rom","Мелодрамы"],["ani","Мультфильмы"],["hor","Ужасы"]];
 const ORIG = [["foreign","Зарубежные"],["ru","Советские и российские"]];
 const WRONG = 10;
+const YM = 114263591;
+const track = (g, p) => { try { if (!window.ym) return; window.ym(YM, 'reachGoal', g); if (p) window.ym(YM, 'params', p); } catch (e) {} };
 const PER = [8, 15, 20];
 const TIMERS = [[0,"Без таймера"],[60,"1 мин"],[120,"2 мин"],[180,"3 мин"]];
 const app = document.getElementById('app'), board = document.getElementById('board'), quitBtn = document.getElementById('quit'), toastEl = document.getElementById('toast');
@@ -504,6 +519,7 @@ function begin() {
   Object.assign(state, {players: state.players.map((p, i) => ({name: p.name.trim() || 'Игрок ' + (i + 1), score: 0})), pool: info.pool, order: shuffle(fresh).concat(shuffle(old)),
     total: state.players.length * info.per, round: 0, used: [], log: [], film: -1});
   if (state.players.length < 2) state.mode = 'random';
+  track('start', {setup: {players: state.players.length, per: info.per, mode: state.mode, timer: state.timer, deck: info.pool.length}});
   turn();
 }
 function turn() {
@@ -518,6 +534,8 @@ function finish(win, timeout) {
   const pts = win ? bank() : 0;
   state.players[gi()].score += pts;
   state.log.push({p: gi(), film: state.film, pts, win, timeout: !!timeout, wrong: state.wrong, opened: state.opened.slice()});
+  track('round', {round: {film: film().ru, result: win ? 'угадан' : timeout ? 'время вышло' : 'сдался', pts, clues: state.opened.length, misses: state.wrong}});
+  if (win) track('round_win');
   state.last = {win, pts, timeout: !!timeout};
   state.view = 'result';
   render(); window.scrollTo(0, 0);
@@ -537,7 +555,7 @@ app.addEventListener('click', e => {
   else if (a === 'custclear') { state.custom = []; render(); }
   else if (a === 'playedclear') { store.set('ugaday2-played', []); toast('История очищена'); render(); }
   else if (a === 'start') begin();
-  else if (a === 'resume') { const s = store.get('ugaday2-game'); if (s) { state = s; state.paused = state.view === 'play'; render(); } }
+  else if (a === 'resume') { track('resume'); const s = store.get('ugaday2-game'); if (s) { state = s; state.paused = state.view === 'play'; render(); } }
   else if (a === 'rnd') { state.film = state.order.find(x => !state.used.includes(x)); prepare(); state.view = 'ready'; render(); }
   else if (a === 'pick') { state.film = i; prepare(); state.view = 'ready'; render(); }
   else if (a === 'go') { state.view = 'play'; state.left = state.timer; state.paused = false; render(); runTimer(); }
@@ -547,10 +565,10 @@ app.addEventListener('click', e => {
   else if (a === 'manual') finish(true);
   else if (a === 'give') finish(false);
   else if (a === 'mode2') { state.mode = v; render(); }
-  else if (a === 'next') { if (state.round + 1 >= state.total) { state.view = 'final'; render(); window.scrollTo(0, 0); } else { state.round++; turn(); } }
-  else if (a === 'share') shareCard();
-  else if (a === 'copy') { navigator.clipboard?.writeText(shareText()).then(() => toast('Итоги скопированы'), () => toast('Не получилось скопировать')); }
-  else if (a === 'again') begin();
+  else if (a === 'next') { if (state.round + 1 >= state.total) { track('finish', {final: {rounds: state.log.length, players: state.players.length}}); state.view = 'final'; render(); window.scrollTo(0, 0); } else { state.round++; turn(); } }
+  else if (a === 'share') { track('share'); shareCard(); }
+  else if (a === 'copy') { track('copy'); navigator.clipboard?.writeText(shareText()).then(() => toast('Итоги скопированы'), () => toast('Не получилось скопировать')); }
+  else if (a === 'again') { track('again'); begin(); }
   else if (a === 'menu') { const d = defaults(); state = d; store.set('ugaday2-game', null); render(); }
 });
 app.addEventListener('change', e => {
@@ -578,7 +596,7 @@ app.addEventListener('submit', e => {
 quitBtn.addEventListener('click', () => {
   if (Date.now() - quitArmed < 3000) {
     stopTimer(); quitBtn.textContent = 'Завершить';
-    if (state.log.length) { state.total = state.log.length; state.view = 'final'; } else { state = defaults(); store.set('ugaday2-game', null); }
+    if (state.log.length) { track('finish_early', {final: {rounds: state.log.length, players: state.players.length}}); state.total = state.log.length; state.view = 'final'; } else { state = defaults(); store.set('ugaday2-game', null); }
     render(); window.scrollTo(0, 0);
   } else { quitArmed = Date.now(); quitBtn.textContent = 'Точно завершить?'; setTimeout(() => { quitBtn.textContent = 'Завершить'; }, 3000); }
 });
